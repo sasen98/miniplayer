@@ -1,4 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/src/foundation/change_notifier.dart';
+
+class MyPopEntry extends PopEntry {
+  MyPopEntry({required this.popNotifier, required this.popInvoked});
+  final ValueListenable<bool> popNotifier;
+  final PopInvokedCallback? popInvoked;
+  @override
+  ValueListenable<bool> get canPopNotifier => popNotifier;
+
+  @override
+  PopInvokedCallback? get onPopInvoked => popInvoked;
+}
 
 class MiniplayerWillPopScope extends StatefulWidget {
   const MiniplayerWillPopScope({
@@ -8,7 +20,7 @@ class MiniplayerWillPopScope extends StatefulWidget {
   }) : super(key: key);
 
   final Widget child;
-  final WillPopCallback onWillPop;
+  final PopInvokedCallback onWillPop;
 
   @override
   _MiniplayerWillPopScopeState createState() => _MiniplayerWillPopScopeState();
@@ -28,21 +40,26 @@ class _MiniplayerWillPopScopeState extends State<MiniplayerWillPopScope> {
     updateRouteCallback();
   }
 
-  Future<bool> onWillPop() async {
-    bool? willPop;
+  PopEntry? onWillPop() {
+    PopEntry? popEntry;
     if (_descendant != null) {
-      willPop = await _descendant!.onWillPop();
+      popEntry = _descendant!.onWillPop();
     }
-    if (willPop == null || willPop) {
-      willPop = await widget.onWillPop();
+    if (popEntry == null || popEntry.canPopNotifier.value) {
+      popEntry = MyPopEntry(
+        popInvoked: widget.onWillPop,
+        popNotifier: ValueNotifier<bool>(true),
+      );
     }
-    return willPop;
+    return popEntry;
   }
 
   void updateRouteCallback() {
-    _route?.removeScopedWillPopCallback(onWillPop);
-    _route = ModalRoute.of(context);
-    _route?.addScopedWillPopCallback(onWillPop);
+    if (onWillPop() != null) {
+      _route?.unregisterPopEntry(onWillPop()!);
+      _route = ModalRoute.of(context);
+      _route?.registerPopEntry(onWillPop()!);
+    }
   }
 
   @override
@@ -57,7 +74,9 @@ class _MiniplayerWillPopScopeState extends State<MiniplayerWillPopScope> {
 
   @override
   void dispose() {
-    _route?.removeScopedWillPopCallback(onWillPop);
+    if (onWillPop() != null) {
+      _route?.unregisterPopEntry(onWillPop()!);
+    }
     super.dispose();
   }
 
