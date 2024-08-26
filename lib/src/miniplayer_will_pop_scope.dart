@@ -17,10 +17,12 @@ class MiniplayerWillPopScope extends StatefulWidget {
     Key? key,
     required this.child,
     required this.onWillPop,
+    this.canPop = true,
   }) : super(key: key);
 
   final Widget child;
   final PopInvokedCallback onWillPop;
+  final bool canPop;
 
   @override
   _MiniplayerWillPopScopeState createState() => _MiniplayerWillPopScopeState();
